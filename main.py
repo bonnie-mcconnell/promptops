@@ -10,7 +10,7 @@ import time
 import os
 
 from database import init_db, log_request, get_db
-from service import optimize_prompt, optimize_prompt_mock, _cache_key, redis_client, CircuitOpenError
+from service import optimize_prompt, optimize_prompt_mock, _cache_key, redis_client, CircuitOpenError, create_vector_index
 
 
 USE_MOCK_LLM = os.environ.get("USE_MOCK_LLM", "false").lower() == "true"
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    create_vector_index()
     yield
 
 app = FastAPI(lifespan=lifespan)

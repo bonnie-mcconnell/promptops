@@ -1,14 +1,18 @@
 from openai import OpenAI
 from dotenv import load_dotenv
-from typing import Optional
+from typing import Optional, List
 import json
 import os
 import redis
+from redis.commands.search.field import VectorField, TextField
+from redis.commands.search.index_definition import IndexDefinition, IndexType
+from redis.commands.search.query import Query
 import hashlib
 import time
 import random
 import threading
 import logging
+import numpy as np
 
 
 load_dotenv()
@@ -68,6 +72,7 @@ class CircuitOpenError(Exception):
 
 
 llm_breaker = CircuitBreaker(failure_threshold=5, cooldown_seconds=30)
+embedding_breaker = CircuitBreaker(failure_threshold=5, cooldown_seconds=30)
 
 
 # retry logic thats used to call_llm
@@ -83,9 +88,79 @@ def call_with_retries(func, max_attempts=3, base_delay=0.5):
     raise RuntimeError("call_with_retries called with max_attempts <= 0")
 
 
+def create_vector_index():
+    try:
+        redis_client.ft("idx:prompts").info()
+        return
+    except Exception:
+        pass
+
+    schema = [
+        TextField("prompt_text"),
+        VectorField(
+            "embedding", 
+            "FLAT",
+            {
+                "TYPE": "FLOAT32",
+                "DIM": 1536,
+                "DISTANCE_METRIC": "COSINE",
+            },
+        ),
+    ]
+
+    redis_client.ft("idx:prompts").create_index(
+        schema,
+        definition=IndexDefinition(prefix=["semantic:"], index_type=IndexType.HASH),
+    )
 
 def _cache_key(prompt: str, goal: str) -> str:
     return "opt:" + hashlib.sha256(f"{prompt}|{goal}".encode()).hexdigest()
+
+
+def _embed_text(prompt: str, goal: str) -> bytes:
+    """Call OpenAI's vector embedding endpoint and return a vector."""
+    def _call_embeddings_api():
+        response = client.embeddings.create(
+            model="text-embedding-3-small",
+            input=prompt + "|" + goal,
+        )
+        embedding_list = response.data[0].embedding
+        if not embedding_list:
+                raise ValueError("OpenAI returned an empty response body.")
+
+        return embedding_list
+
+    embedding_list = embedding_breaker.call(lambda: call_with_retries(_call_embeddings_api))
+    return np.array(embedding_list, dtype=np.float32).tobytes()
+
+
+def _store_semantic_cache(prompt, goal, result):
+    embedding = _embed_text(prompt, goal)
+    key = "semantic:" + hashlib.sha256(f"{prompt}|{goal}".encode()).hexdigest()
+    redis_client.hset(
+        key, 
+        mapping={
+            "prompt_text": prompt + "|" + goal,
+            "embedding": embedding,
+            "result_json": json.dumps(result)
+        },
+    )
+
+
+def _semantic_cache_lookup(prompt, goal, threshold=0.15):
+    embedding_bytes = _embed_text(prompt, goal)
+
+    q = Query(f"*=>[KNN 1 @embedding $vec AS score]").sort_by("score").return_fields("result_json", "score").dialect(2)
+    results = redis_client.ft("idx:prompts").search(q, query_params={"vec": embedding_bytes})
+
+    if not results.docs: # type: ignore[attr-defined]
+        return None
+
+    best_match = results.docs[0] # type: ignore[attr-defined]
+    if float(best_match.score) < threshold:
+        return json.loads(best_match.result_json)
+
+    return None
 
 
 def optimize_prompt(prompt: str, goal: str) -> dict:
@@ -95,6 +170,10 @@ def optimize_prompt(prompt: str, goal: str) -> dict:
     cached = redis_client.get(key)
     if cached:
          return json.loads(cached)
+
+    sem_cached = _semantic_cache_lookup(prompt, goal)
+    if sem_cached:
+        return sem_cached
 
     system_message = """You are a prompt engineering expert. Your job is to improve 
     prompts so they produce better results from language models.
@@ -149,6 +228,7 @@ def optimize_prompt(prompt: str, goal: str) -> dict:
 
     result = llm_breaker.call(lambda: call_with_retries(_call_llm))
     redis_client.set(key, json.dumps(result), ex=3600)
+    _store_semantic_cache(prompt, goal, result)
 
     return result
 

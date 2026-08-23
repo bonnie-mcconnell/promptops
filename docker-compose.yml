@@ -21,10 +21,10 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7-alpine
+    image: redis/redis-stack-server:latest
     volumes:
       - redis_data:/data
-    command: redis-server --save 60 1
+    command: redis-stack-server --save 60 1
     ports:
       - "6379:6379"
     healthcheck:
