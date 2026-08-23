@@ -5,7 +5,7 @@ from service import optimize_prompt
 from conftest import fake_openai_response
 
 
-def test_optimize_prompt_success():
+def test_optimize_prompt_success(mock_embeddings):
     fake_response = fake_openai_response(
         '{"optimized_prompt": "better prompt", "changes": "added detail"}'
     )
@@ -16,7 +16,7 @@ def test_optimize_prompt_success():
     assert result[0]["changes"] == "added detail"
 
 
-def test_optimize_prompt_retries_then_succeeds():
+def test_optimize_prompt_retries_then_succeeds(mock_embeddings):
     fake_response = fake_openai_response(
         '{"optimized_prompt": "recovered", "changes": "worked on retry"}'
     )
@@ -33,7 +33,7 @@ def test_optimize_prompt_retries_then_succeeds():
     assert mock_create.call_count == 3
 
 
-def test_optimize_prompt_invalid_json_raises_value_error():
+def test_optimize_prompt_invalid_json_raises_value_error(mock_embeddings):
     fake_response = fake_openai_response("not valid json at all")
     with patch("llm.client.chat.completions.create", return_value=fake_response):
         with pytest.raises(ValueError):
