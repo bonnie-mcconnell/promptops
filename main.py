@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -10,7 +13,9 @@ import time
 import os
 
 from database import init_db, log_request, get_db
-from service import optimize_prompt, optimize_prompt_mock, _cache_key, redis_client, CircuitOpenError, create_vector_index
+from service import optimize_prompt, optimize_prompt_mock 
+from resilience import CircuitOpenError
+from cache import create_vector_index, cache_key
 
 
 USE_MOCK_LLM = os.environ.get("USE_MOCK_LLM", "false").lower() == "true"
@@ -58,16 +63,16 @@ def health_check():
 @app.post("/optimize", response_model=PromptResponse)
 def optimize_prompt_endpoint(request: PromptRequest, db: Session = Depends(get_db)):
     start = time.perf_counter()
-    key = _cache_key(request.prompt, request.goal)
-    was_cached = redis_client.get(key) is not None
+    key = cache_key(request.prompt, request.goal)
 
     status = "ok"
+    cache_type = "none"
     error_detail = None
     http_error = None
     result = None
 
     try:
-        result = optimizer(request.prompt, request.goal)
+        result, cache_type = optimizer(request.prompt, request.goal)
     except APIStatusError as e:
         status, error_detail = "error", str(e)
         http_error = HTTPException(status_code=502, detail="Upstream LLM provider error. Please retry.")
@@ -82,7 +87,7 @@ def optimize_prompt_endpoint(request: PromptRequest, db: Session = Depends(get_d
         http_error = HTTPException(status_code=500, detail="Internal server error. Please try again.")
     finally:
         latency_ms = int((time.perf_counter() - start) * 1000)
-        log_request(db, request.prompt, request.goal, key, was_cached, latency_ms, status, error_detail)
+        log_request(db, request.prompt, request.goal, key, cache_type, latency_ms, status, error_detail)
 
     if http_error:
         raise http_error

@@ -25,7 +25,7 @@ class RequestLog(Base):
     prompt = Column(Text, nullable=False)
     goal = Column(Text, nullable=False)
     prompt_hash = Column(String, index=True, nullable=False)
-    cache_hit = Column(Boolean, nullable=False)
+    cache_type = Column(String, nullable=False) # "exact" | "semantic" | "none"
     latency_ms = Column(Integer, nullable=False)
     status = Column(String, nullable=False)
     error_detail = Column(Text, nullable=True)
@@ -43,11 +43,11 @@ def get_db():
         db.close()
 
 
-def log_request(db, prompt:str, goal: str, prompt_hash: str, cache_hit: bool, 
+def log_request(db, prompt:str, goal: str, prompt_hash: str, cache_type: str, 
                 latency_ms: int, status: str, error_detail: Optional[str] = None):
     entry = RequestLog(
         prompt=prompt, goal=goal, prompt_hash=prompt_hash,
-        cache_hit=cache_hit, latency_ms=latency_ms,
+        cache_type=cache_type, latency_ms=latency_ms,
         status=status, error_detail=error_detail
     )
     db.add(entry)
