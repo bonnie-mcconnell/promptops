@@ -119,8 +119,6 @@ def test_semantic_cache_hit_when_vectors_match():
     with patch("service.client.embeddings.create", return_value=fake_embedding_response), \
         patch("service.client.chat.completions.create", return_value=fake_llm_response):
         first = optimize_prompt("write about dogs", "engaging intro")
-
-    with patch("service.client.embeddings.create", return_value=fake_embedding_response):
         second = optimize_prompt("write something different entirely", "engaging intro")
 
     assert second["optimized_prompt"] == "better prompt"
