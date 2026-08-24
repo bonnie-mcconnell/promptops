@@ -10,14 +10,25 @@ from resilience import CircuitBreaker, call_with_retries
 logger = logging.getLogger(__name__)
 
 client = OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY"),
+    api_key=os.environ.get("OPENAI_AI_KEY"),
     base_url="https://api.openai.com/v1"
+)
+
+judge_client = OpenAI(
+     api_key = os.environ.get("OPEN_AI_KEY"),
+     base_url="https://api.openai.com/v1"
 )
 
 
 llm_breaker = CircuitBreaker(failure_threshold=5, cooldown_seconds=30)
 embedding_breaker = CircuitBreaker(failure_threshold=5, cooldown_seconds=30)
 
+
+def build_user_message(prompt: str, goal: str) -> str:
+     return f"""Original prompt: {prompt}
+Goal: {goal}
+
+Optimize this prompt to better achieve the stated goal."""
 
 def call_llm(prompt: str, system_message: str, user_message: str):
     def _call():

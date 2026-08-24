@@ -1,7 +1,7 @@
 import json
 
 from cache import cache_key, semantic_cache_lookup, store_semantic_cache, redis_client
-from llm import call_llm
+from llm import call_llm, build_user_message
 
 
 def optimize_prompt(prompt: str, goal: str) -> tuple[dict, str]:
@@ -28,11 +28,8 @@ def optimize_prompt(prompt: str, goal: str) -> tuple[dict, str]:
     
     Return ONLY the JSON object. No markdown formatting, no extra text."""
 
-    user_message = f"""Original prompt: {prompt}
-    Goal: {goal}
+    user_message = build_user_message(prompt, goal)
 
-    Optimize this prompt to better achieve the stated goal.
-    """
     result = call_llm(prompt, system_message, user_message)
     redis_client.set(key, json.dumps(result), ex=3600)
     store_semantic_cache(prompt, goal, result)
