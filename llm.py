@@ -10,12 +10,12 @@ from resilience import CircuitBreaker, call_with_retries
 logger = logging.getLogger(__name__)
 
 client = OpenAI(
-    api_key=os.environ.get("OPENAI_AI_KEY"),
+    api_key=os.environ.get("OPENAI_API_KEY"),
     base_url="https://api.openai.com/v1"
 )
 
 judge_client = OpenAI(
-     api_key = os.environ.get("OPEN_AI_KEY"),
+     api_key = os.environ.get("OPENAI_API_KEY"),
      base_url="https://api.openai.com/v1"
 )
 
