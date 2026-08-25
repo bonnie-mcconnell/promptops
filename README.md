@@ -2,6 +2,8 @@
 
 A prompt-optimization API that started as a FastAPI tutorial exercise and grew into a small exploration of how LLM-backed services behave in production: caching, retries, circuit breakers, observability, and a stastical A/B testing framework for deciding whether a change to a system message is actually an improvement, or just noise.
 
+![CI](https://github.com/bonnie-mcconnell/promptops/actions/workflows/ci.yml/badge.svg)
+
 Given a prompt and a goal, this service returns an optimized version of that prompt, an exploration of what changed, caches aggressively (with both exact match and semantic caching), degrades gracefully when the upstream LLM is unreliable, and logs enough about every request to answer 'what happened, and why' after the fact.
 
 This project is interested in the problems that start after 'call the API, format the output'. The upstream call is unreliable and not cheap, a naive cache only catches literal duplicate traffic, and "we changed the prompt and it feels better" isn't an engineering claim but a guess. This project is an attempt to actually address those three things, not just the happy path.

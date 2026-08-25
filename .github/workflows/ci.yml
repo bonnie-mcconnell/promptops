@@ -1,0 +1,15 @@
+name: CI
+on: [push, pull_request]
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Build and test
+              run: |
+                echo "POSTGRES_PASSWORD=ci_test_pw" > .env
+                echo "USE_MOCK_LLM=true" >> .env
+                echo "OPENAI_API_KEY=sk-test-not-real" >> .env
+                docker compose up --build -d
+                sleep 5
+                docker compose exec -T api pytest -v
