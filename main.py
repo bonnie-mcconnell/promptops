@@ -16,6 +16,7 @@ from database import init_db, log_request, get_db
 from service import optimize_prompt, optimize_prompt_mock 
 from resilience import CircuitOpenError
 from cache import create_vector_index, cache_key
+from eval import judge_output
 
 
 USE_MOCK_LLM = os.environ.get("USE_MOCK_LLM", "false").lower() == "true"
@@ -53,6 +54,21 @@ class PromptResponse(BaseModel):
     changes: str = Field(
         description="Explanation of what was improved and why"
     )
+
+
+class CompareRequest(BaseModel):
+    prompt: str
+    goal: str
+    candidate_a: str = Field(description="First candidate prompt to compare")
+    candidate_b: str = Field(description="Second candidate prompt to compare")
+    model_config = {"extra": "forbid"}
+
+
+class CompareResponse(BaseModel):
+    score_a: float
+    score_b: float
+    winner: str
+    reasoning: str
 
 
 @app.get("/health")
@@ -94,3 +110,19 @@ def optimize_prompt_endpoint(request: PromptRequest, db: Session = Depends(get_d
 
     assert result is not None
     return PromptResponse(**result)
+
+@app.post("/compare", response_model=CompareResponse)
+def compare_prompts(request: CompareRequest):
+    try:
+        result = judge_output(request.prompt, request.goal, request.candidate_a, request.candidate_b)
+    except Exception:
+        raise HTTPException(status_code=502, detail="Judge evaluation failed. Please retry.")
+
+    winner = "a" if result["score_a"] > result["score_b"] else "b" if result["score_b"] > result["score_a"] else "tie"
+
+    return CompareResponse(
+        score_a=result["score_a"],
+        score_b=result["score_b"],
+        winner=winner,
+        reasoning=result["reasoning"]
+    )
