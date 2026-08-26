@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 import time
 import os
 
-from database import init_db, log_request, get_db
+from database import init_db, log_request, get_db, get_stats
 from service import optimize_prompt, optimize_prompt_mock 
 from resilience import CircuitOpenError
 from cache import create_vector_index, cache_key
@@ -83,6 +83,17 @@ class CompareResponse(BaseModel):
     reasoning: str
 
 
+class StatsResponse(BaseModel):
+    total: int
+    exact_hits: int
+    semantic_hits: int
+    cache_misses: int
+    errors: int
+    avg_latency_ms: float
+    p50_latency_ms: float
+    p95_latency_ms: float
+
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
@@ -138,3 +149,8 @@ def compare_prompts(request: CompareRequest):
         winner=winner,
         reasoning=result["reasoning"]
     )
+
+
+@app.get("/stats", response_model=StatsResponse)
+def get_stats_endpoint(db: Session = Depends(get_db)):
+    return get_stats(db)

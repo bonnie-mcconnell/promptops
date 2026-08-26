@@ -3,8 +3,8 @@ from datetime import datetime, timezone
 from typing import Optional
 import uuid
 
-from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime, Text
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import create_engine, Column, String, Integer, text, DateTime, Text
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
 
 DATABASE_URL = os.environ.get(
@@ -53,4 +53,34 @@ def log_request(db, prompt:str, goal: str, prompt_hash: str, cache_type: str,
     db.add(entry)
     db.commit()
 
+
+def get_stats(db: Session) -> dict:
+    result = db.execute(text(
+        """
+        SELECT
+            COUNT(*) AS total,
+            COUNT(*) FILTER (WHERE cache_type = 'exact') AS exact_hits,
+            COUNT(*) FILTER (WHERE cache_type = 'semantic') AS semantic_hits,
+            COUNT(*) FILTER (WHERE cache_type = 'none') AS cache_misses,
+            COUNT(*) FILTER (WHERE status = 'error') AS errors,
+            AVG(latency_ms) AS avg_latency_ms,
+            percentile_cont(0.5) WITHIN GROUP (ORDER BY latency_ms) FILTER (WHERE status = 'ok') AS p50_latency_ms,
+            percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) FILTER (WHERE status = 'ok') AS p95_latency_ms
+        FROM requests
+    """)).mappings().first()
+
+    assert result is not None
+    if result["total"] == 0:
+        return {
+            "total": 0,
+            "exact_hits": 0,
+            "semantic_hits": 0,
+            "cache_misses": 0,
+            "errors": 0,
+            "avg_latency_ms": None,
+            "p50_latency_ms": None,
+            "p95_latency_ms": None
+        }
+
+    return dict(result)
 
