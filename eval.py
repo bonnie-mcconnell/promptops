@@ -1,4 +1,5 @@
 from scipy.stats import wilcoxon
+from typing import cast
 import statistics
 import random
 import json
@@ -55,6 +56,7 @@ def judge_output(prompt: str, goal: str, output_a: str, output_b: str) -> dict:
             ],
             response_format={"type": "json_object"},
             temperature=0.0,
+            max_tokens=300,
         )
         result_text = response.choices[0].message.content
         if not result_text:
@@ -110,6 +112,8 @@ def run_comparison(variant_a_system_message: str, variant_b_system_message: str,
         raise ValueError(f"Only {len(scores_a)} successful comparison - not enough data for a meaningful test.")
 
     statistic, p_value = wilcoxon(scores_b, scores_a)
+    p_value = cast(float, p_value)  
+
     differences = [b - a for a, b in zip(scores_a, scores_b)]
     median_diff = statistics.median(differences)
 

@@ -36,10 +36,14 @@ app = FastAPI(lifespan=lifespan)
 
 class PromptRequest(BaseModel):
     prompt: str = Field(
-        description="The original prompt to optimize"
+        description="The original prompt to optimize",
+        min_length=1,
+        max_length=4000,
     )
     goal: str = Field(
-        description="What the prompt should accomplish"
+        description="What the prompt should accomplish",
+        min_length=1,
+        max_length=4000,
     )
     model_config = {"extra": "forbid"}
 
@@ -59,8 +63,16 @@ class PromptResponse(BaseModel):
 class CompareRequest(BaseModel):
     prompt: str
     goal: str
-    candidate_a: str = Field(description="First candidate prompt to compare")
-    candidate_b: str = Field(description="Second candidate prompt to compare")
+    candidate_a: str = Field(
+        description="First candidate prompt to compare",
+        min_length=1,
+        max_length=4000,
+    )
+    candidate_b: str = Field(
+        description="Second candidate prompt to compare",
+        min_length=1,
+        max_length=4000,
+    )
     model_config = {"extra": "forbid"}
 
 

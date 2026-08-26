@@ -39,7 +39,8 @@ def call_llm(prompt: str, system_message: str, user_message: str):
                 {"role": "user", "content": user_message}
             ],
             response_format={"type": "json_object"},
-            temperature=0.7
+            temperature=0.7,
+            max_tokens=800,
         )
 
         result_text = response.choices[0].message.content
