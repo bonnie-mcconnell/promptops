@@ -21,6 +21,7 @@ class RequestLog(Base):
     __tablename__ = "requests"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    request_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     prompt = Column(Text, nullable=False)
     goal = Column(Text, nullable=False)
