@@ -10,6 +10,7 @@ jobs:
                 echo "POSTGRES_PASSWORD=ci_test_pw" > .env
                 echo "USE_MOCK_LLM=true" >> .env
                 echo "OPENAI_API_KEY=sk-test-not-real" >> .env
+                echo "API_KEY=ci-test-key" >> .env
                 docker compose up --build -d
                 sleep 5
                 docker compose exec -T api pytest -v
