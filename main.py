@@ -16,7 +16,7 @@ from database import init_db, log_request, get_db, get_stats
 from service import optimize_prompt, optimize_prompt_mock 
 from resilience import CircuitOpenError
 from cache import create_vector_index, cache_key
-from eval import judge_output
+from eval import judge_output, judge_output_mock
 from auth import verify_api_key
 
 
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 USE_MOCK_LLM = os.environ.get("USE_MOCK_LLM", "false").lower() == "true"
 optimizer = optimize_prompt_mock if USE_MOCK_LLM else optimize_prompt
+judge = judge_output_mock if USE_MOCK_LLM else judge_output
 
 
 @asynccontextmanager
@@ -78,7 +79,7 @@ def optimize_prompt_endpoint(request: PromptRequest, _: None = Depends(verify_ap
 @app.post("/compare", response_model=CompareResponse)
 def compare_prompts(request: CompareRequest, _: None = Depends(verify_api_key)):
     try:
-        result = judge_output(request.prompt, request.goal, request.candidate_a, request.candidate_b)
+        result = judge(request.prompt, request.goal, request.candidate_a, request.candidate_b)
     except Exception:
         raise HTTPException(status_code=502, detail="Judge evaluation failed. Please retry.")
 

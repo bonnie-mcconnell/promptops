@@ -132,3 +132,13 @@ def run_comparison(variant_a_system_message: str, variant_b_system_message: str,
     }
 
 
+
+def judge_output_mock(prompt: str, goal: str, output_a: str, output_b: str) -> dict:
+    """
+    Mock call for testing purposes.
+    """
+    return {
+        "score_a": 5.3,
+        "score_b": 8.8,
+        "reasoning": "Reasoning"
+    } 

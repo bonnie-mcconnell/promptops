@@ -1,8 +1,11 @@
 import pytest
 from unittest.mock import patch, MagicMock
+from fastapi.testclient import TestClient
+
 from cache import create_vector_index, redis_client
 import llm
 import eval as eval_module
+from main import app
 
 
 @pytest.fixture(autouse=True)
@@ -39,6 +42,12 @@ def mock_llm_client():
 def mock_judge_client():
     with patch("llm.judge_client.chat.completions.create") as mock:
         yield mock
+
+
+@pytest.fixture
+def test_client():
+    with TestClient(app) as client:
+        yield client
 
 
 @pytest.fixture()
