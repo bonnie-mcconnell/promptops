@@ -7,23 +7,24 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
 from openai import APIStatusError
-from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 import time
 import os
 
+from models import PromptRequest, PromptResponse, CompareRequest, CompareResponse, StatsResponse
 from database import init_db, log_request, get_db, get_stats
 from service import optimize_prompt, optimize_prompt_mock 
 from resilience import CircuitOpenError
 from cache import create_vector_index, cache_key
 from eval import judge_output
+from auth import verify_api_key
 
+
+logger = logging.getLogger(__name__)
 
 USE_MOCK_LLM = os.environ.get("USE_MOCK_LLM", "false").lower() == "true"
 optimizer = optimize_prompt_mock if USE_MOCK_LLM else optimize_prompt
 
-
-logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -34,73 +35,13 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-class PromptRequest(BaseModel):
-    prompt: str = Field(
-        description="The original prompt to optimize",
-        min_length=1,
-        max_length=4000,
-    )
-    goal: str = Field(
-        description="What the prompt should accomplish",
-        min_length=1,
-        max_length=4000,
-    )
-    model_config = {"extra": "forbid"}
-
-
-class PromptResponse(BaseModel):
-    original_prompt: str = Field(
-        description="The original prompt that was submitted"
-    )
-    optimized_prompt: str = Field(
-        description="The improved version of the prompt"
-    )
-    changes: str = Field(
-        description="Explanation of what was improved and why"
-    )
-
-
-class CompareRequest(BaseModel):
-    prompt: str
-    goal: str
-    candidate_a: str = Field(
-        description="First candidate prompt to compare",
-        min_length=1,
-        max_length=4000,
-    )
-    candidate_b: str = Field(
-        description="Second candidate prompt to compare",
-        min_length=1,
-        max_length=4000,
-    )
-    model_config = {"extra": "forbid"}
-
-
-class CompareResponse(BaseModel):
-    score_a: float
-    score_b: float
-    winner: str
-    reasoning: str
-
-
-class StatsResponse(BaseModel):
-    total: int
-    exact_hits: int
-    semantic_hits: int
-    cache_misses: int
-    errors: int
-    avg_latency_ms: float
-    p50_latency_ms: float
-    p95_latency_ms: float
-
-
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
 
 @app.post("/optimize", response_model=PromptResponse)
-def optimize_prompt_endpoint(request: PromptRequest, db: Session = Depends(get_db)):
+def optimize_prompt_endpoint(request: PromptRequest, _: None = Depends(verify_api_key), db: Session = Depends(get_db)):
     start = time.perf_counter()
     key = cache_key(request.prompt, request.goal)
 
@@ -135,7 +76,7 @@ def optimize_prompt_endpoint(request: PromptRequest, db: Session = Depends(get_d
     return PromptResponse(**result)
 
 @app.post("/compare", response_model=CompareResponse)
-def compare_prompts(request: CompareRequest):
+def compare_prompts(request: CompareRequest, _: None = Depends(verify_api_key)):
     try:
         result = judge_output(request.prompt, request.goal, request.candidate_a, request.candidate_b)
     except Exception:
@@ -152,5 +93,5 @@ def compare_prompts(request: CompareRequest):
 
 
 @app.get("/stats", response_model=StatsResponse)
-def get_stats_endpoint(db: Session = Depends(get_db)):
+def get_stats_endpoint(_: None = Depends(verify_api_key), db: Session = Depends(get_db)):
     return get_stats(db)
