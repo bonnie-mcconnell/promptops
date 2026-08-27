@@ -18,7 +18,7 @@ from resilience import CircuitOpenError
 from cache import create_vector_index, cache_key
 from eval import judge_output, judge_output_mock
 from auth import verify_api_key
-
+from ratelimit import check_rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ def health_check():
 
 
 @app.post("/optimize", response_model=PromptResponse)
-def optimize_prompt_endpoint(request: PromptRequest, _: None = Depends(verify_api_key), db: Session = Depends(get_db)):
+def optimize_prompt_endpoint(request: PromptRequest, _: None = Depends(verify_api_key), __: None = Depends(check_rate_limit), db: Session = Depends(get_db)):
     start = time.perf_counter()
     key = cache_key(request.prompt, request.goal)
 
@@ -77,7 +77,7 @@ def optimize_prompt_endpoint(request: PromptRequest, _: None = Depends(verify_ap
     return PromptResponse(**result)
 
 @app.post("/compare", response_model=CompareResponse)
-def compare_prompts(request: CompareRequest, _: None = Depends(verify_api_key)):
+def compare_prompts(request: CompareRequest, _: None = Depends(verify_api_key), __: None = Depends(check_rate_limit)):
     try:
         result = judge(request.prompt, request.goal, request.candidate_a, request.candidate_b)
     except Exception:

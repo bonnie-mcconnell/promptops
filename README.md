@@ -135,7 +135,7 @@ docker compose exec api pytest -v
 
 ## What I'd add next
  
-- Basic API-key auth and per-key rate limiting
+- Multi-key auth and per-key rate limiting
 - Distributed circuit breaker state (currently in-process, wouldn't
   coordinate correctly across multiple replicas)
 - A second, independent judge provider for a stronger self-preference-bias
