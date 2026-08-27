@@ -1,5 +1,10 @@
 import os
 import pytest
+import time
+
+from ratelimit import WINDOW_SECONDS, RATE_LIMIT_PER_MINUTE
+from cache import redis_client 
+
 
 api_key = os.environ["API_KEY"]
 
@@ -72,3 +77,18 @@ def test_stats_valid_api_key(test_client):
     expected_fields = ["total", "exact_hits", "semantic_hits", "cache_misses", "errors", "avg_latency_ms", "p50_latency_ms", "p95_latency_ms"]
     for field in expected_fields:
         assert field in result
+
+
+def test_rate_limit(test_client):
+    window = int((time.time() // WINDOW_SECONDS))
+    key = f"ratelimit:{api_key}:{window}"
+    redis_client.set(key, RATE_LIMIT_PER_MINUTE)
+    response = test_client.post("/optimize", json=OPTIMIZE_BODY, headers={"X-API-Key": api_key})
+    result = response.json()
+
+    try:
+        assert response.status_code == 429
+        assert result["detail"] == "Rate limit exceeded. Please slow down."
+
+    finally:
+        redis_client.delete(key)
