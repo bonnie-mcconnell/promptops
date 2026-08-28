@@ -96,22 +96,22 @@ against a mock.
 
 ## Design Decisions
 
-**Three circuit breakers** Chat completions, embeddings and LLM judging are
+**Three circuit breakers:** Chat completions, embeddings and LLM judging are
 three seperate OpenAI calls to different models that can each fail independently. A single shared
 breaker would mean an embeddings outage incorrectly blocks chat completions
 too, or that a judge outage incorrectly blocks the main optimization path, even though the two aren't related failures. Each upstream dependency gets its own breaker.
 
-**FLAT vector index, not HNSW.** RediSearch supports both. HNSW is faster at
+**FLAT vector index, not HNSW:** RediSearch supports both. HNSW is faster at
 scale but approximate, meaning it can miss the true nearest neighbor in exchange for
 speed. At this project's actual data volume (a cache, not a corpus), FLAT's
 exact brute-force search costs single-digit milliseconds. Using HNSW would mean trading correctness for a speedup that would never be realized.
 
-**Wilcoxon signed-rank test, not a paired t-test**, for comparing prompt
+**Wilcoxon signed-rank test, not a paired t-test:** for comparing prompt
 variants. A t-test assumes the paired differences are roughly normally
 distributed, which is reasonable for large samples of continuous data, but less reliable for a bounded 1–10 LLM-judge scale with a modest sample size as in this project. Wilcoxon works on the ranks of the differences instead of their raw magnitudes, which is more robust to that shape of data. The harness
 reports both a p-value and a median-difference effect size, since a statistically detectable difference and a practically meaningful one aren't the same.
 
-**The LLM judge is a different model than the one being evaluated**
+**The LLM judge is a different model than the one being evaluated:**
 (`gpt-4o` judging `gpt-4o-mini` output), is done specifically to reduce
 self-preference bias (the documented tendency of LLM judges to rate their
 own model family's output more favorably). Which variant is shown to the judge
@@ -120,7 +120,7 @@ first is also randomized per comparison, to control for judge position bias
 appears first, independent of quality). It would be a stronger control to have a fully independent judge from a different provider,  than just a different model from the same provider.
 
 **Semantic caching is a second, parallel cache, not a replacement for
-exact-match.** Exact-match is cheaper (a plain key lookup, no embedding call)
+exact-match:** Exact-match is cheaper (a plain key lookup, no embedding call)
 and exact, so it's checked first. Semantic search only runs on an exact-match
 miss.
 
