@@ -6,12 +6,19 @@ A prompt-optimization API that started as a FastAPI tutorial exercise and grew i
 
 Given a prompt and a goal, this service returns an optimized version of that prompt, an exploration of what changed, caches aggressively (with both exact match and semantic caching), degrades gracefully when the upstream LLM is unreliable, and logs enough about every request to answer 'what happened, and why' after the fact.
 
-This project is interested in the problems that start after 'call the API, format the output'. The upstream call is unreliable and not cheap, a naive cache only catches literal duplicate traffic, and "we changed the prompt and it feels better" isn't an engineering claim but a guess. This project is an attempt to actually address those three things, not just the happy path.
+This project is interested in the problems that start after 'call the API, format the output'. The upstream call is unreliable and not cheap, a naive cache only catches literal duplicate traffic, and "we changed the prompt and it feels better" is just a guess. This project is an attempt to address those three things, not just the happy path.
 
 ## Architecture
 
 ```
 Client
+  │
+  ▼
+X-API-Key header check (401 if missing/invalid)
+  │
+  ▼
+Rate limit check on /optimize and /compare (429 if exceeded,
+  /stats is exempt as it has no upstream cost to protect against)
   │
   ▼
 FastAPI (/optimize)
@@ -31,19 +38,42 @@ FastAPI (/optimize)
         prompt, goal, cache_type, latency, status, error detail
 ```
 
-A seperate evaluation harness (`eval.py`)~runs a fixed, hand built prompt set through two system message variants, scores each output with an LLM judge, and compares the two with a paired statistical test.
+A seperate evaluation harness (`eval.py`) runs a fixed, hand built prompt set through two system message variants, scores each output with an LLM judge, and compares the two with a paired statistical test.
 
-**Stack:** FastAPI · Redis Stack (cache + vector search) · PostgreSQL (trace log) ·
-Docker Compose · pytest · scipy
+**Stack:** FastAPI · Redis Stack (cache + vector search) · PostgreSQL (trace log) · Alembic (migrations) · Docker Compose · pytest · scipy
 
 ## Running it
 
 ```bash
-cp .env.example .env   # fill in POSTGRES_PASSWORD, OPENAI_API_KEY optional
+cp .env.example .env
+```
+
+Fill in POSTGRES_PASSWORD and optionally OPENAI_API_KEY (leave USE_MOCK_LLM=true to run with zero API cost/mock functions for testing). Also generate an API_KEY, every non health endpoint requires it for authentication:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Paste the output into .env as API_KEY=....
+
+```bash
 docker compose up --build
 ```
 
-The API comes up at `http://localhost:8000`. Interactive docs at `/docs`.
+The API comes up at `http://localhost:8000`. Interactive docs at `/docs`. On a fresh database, init_db() creates tables automatically. If you're upgrading an existing database to a newer schema, run migrations instead:
+
+```bash
+docker compose exec api alembic upgrade head
+```
+
+Every request except /health requires an X-API-Key header matching the .env API_KEY value:
+
+```bash
+curl -X POST http://localhost:8000/optimize \
+  -H "X-API-Key: <your API_KEY value>" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "write about dogs", "goal": "an engaging intro"}'
+```
 
 ```bash
 docker compose exec api pytest -v
@@ -120,6 +150,15 @@ above is for), but it's a direct, practical use of the same judging logic for
 anyone who wants to A/B test their own prompt wording rather than trust
 either variant blindly.
 
+## Observability
+
+`GET /stats` (also behind auth, but not rate-limited since it has no
+upstream cost) returns aggregate figures computed directly in Postgres via
+`FILTER`-scoped `COUNT`/`AVG`/`percentile_cont`: cache hit rate broken down
+by exact/semantic/miss, error rate, and p50/p95 latency over every request
+`/optimize` has logged due to the trace logging described
+above.
+
 ## Testing
  
 Unit tests for the circuit breaker in isolation, the LLM call and embedding
@@ -135,7 +174,13 @@ docker compose exec api pytest -v
 
 ## What I'd add next
  
-- Multi-key auth and per-key rate limiting
+- Multi-tenant auth: currently a single static API key shared by every
+  caller, checked with a timing-safe comparison. A multi-tenant version
+  would move to an `api_keys` table (hashed values, one row per key,
+  optional per-key rate-limit tier) with issuance and revocation. Rate
+  limiting is similarly a single shared budget across all `/optimize` and
+  `/compare` traffic today, via a Redis fixed-window counter. Per-key
+  budgets would follow directly from the same schema change.
 - Distributed circuit breaker state (currently in-process, wouldn't
   coordinate correctly across multiple replicas)
 - A second, independent judge provider for a stronger self-preference-bias
