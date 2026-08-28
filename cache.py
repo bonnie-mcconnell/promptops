@@ -10,9 +10,8 @@ from redis.commands.search.query import Query
 from llm import embed_text
 
 
-redis_client = redis.Redis(
-    host=os.environ.get("REDIS_HOST", "redis"), 
-    port=6379,
+redis_client = redis.Redis.from_url(
+    url=os.environ.get("REDIS_URL", "redis://redis:6379"),
     decode_responses=True
 )
 

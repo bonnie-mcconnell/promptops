@@ -8,6 +8,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://promptops:${POSTGRES_PASSWORD}@postgres:5432/promptops
       - USE_MOCK_LLM=${USE_MOCK_LLM:-true}
+      - REDIS_URL=redis://redis:6379
     depends_on:
       redis:
         condition: service_healthy
