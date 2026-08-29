@@ -39,7 +39,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5500"],
+    allow_origins=["http://localhost:5500", "https://promptops-frontend.onrender.com"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
