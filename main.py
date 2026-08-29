@@ -6,6 +6,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, Response
+from fastapi.middleware.cors import CORSMiddleware
 from openai import APIStatusError
 from sqlalchemy.orm import Session
 from uuid import uuid4
@@ -35,6 +36,13 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5500"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")

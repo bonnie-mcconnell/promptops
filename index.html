@@ -1,0 +1,43 @@
+<h1>PromptOps</h1>
+
+<label for="api-key-input">API Key</label>
+<input id="api-key-input" type="password">
+
+<form id="optimize-form">
+    <label for="prompt-input">Prompt</label>
+    <textarea id="prompt-input"></textarea>
+
+    <label for="goal-input">Goal</label>
+    <input id="goal-input" type="text">
+
+    <button type="submit">Optimize</button>
+</form>
+
+<div id="optimize-result"></div>
+
+<script>
+    const form = document.getElementById("optimize-form");
+    const resultDiv = document.getElementById("optimize-result");
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        
+        const apiKey = document.getElementById("api-key-input").value;
+        const prompt = document.getElementById("prompt-input").value;
+        const goal = document.getElementById("goal-input").value;
+
+        resultDiv.textContent = "Loading ...";
+
+        const response = await fetch("http://localhost:8000/optimize", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-API-Key": apiKey
+            },
+            body: JSON.stringify({ prompt: prompt, goal: goal })
+        });
+
+        const data = await response.json();
+        resultDiv.textContent = JSON.stringify(data, null, 2);
+    });
+</script>
