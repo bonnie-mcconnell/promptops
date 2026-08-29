@@ -44,10 +44,10 @@ def get_db():
         db.close()
 
 
-def log_request(db, prompt:str, goal: str, prompt_hash: str, cache_type: str, 
+def log_request(db, request_id: str,prompt:str, goal: str, prompt_hash: str, cache_type: str, 
                 latency_ms: int, status: str, error_detail: Optional[str] = None):
     entry = RequestLog(
-        prompt=prompt, goal=goal, prompt_hash=prompt_hash,
+        request_id=request_id, prompt=prompt, goal=goal, prompt_hash=prompt_hash,
         cache_type=cache_type, latency_ms=latency_ms,
         status=status, error_detail=error_detail
     )

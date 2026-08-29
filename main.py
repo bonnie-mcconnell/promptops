@@ -5,9 +5,10 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Response
 from openai import APIStatusError
 from sqlalchemy.orm import Session
+from uuid import uuid4
 import time
 import os
 
@@ -42,8 +43,12 @@ def health_check():
 
 
 @app.post("/optimize", response_model=PromptResponse)
-def optimize_prompt_endpoint(request: PromptRequest, _: None = Depends(verify_api_key), __: None = Depends(check_rate_limit), db: Session = Depends(get_db)):
+def optimize_prompt_endpoint(request: PromptRequest, response: Response, _: None = Depends(verify_api_key), __: None = Depends(check_rate_limit), db: Session = Depends(get_db)):
     start = time.perf_counter()
+
+    request_id = str(uuid4())
+    response.headers["X-Request-ID"] = request_id  
+
     key = cache_key(request.prompt, request.goal)
 
     status = "ok"
@@ -56,19 +61,20 @@ def optimize_prompt_endpoint(request: PromptRequest, _: None = Depends(verify_ap
         result, cache_type = optimizer(request.prompt, request.goal)
     except APIStatusError as e:
         status, error_detail = "error", str(e)
-        http_error = HTTPException(status_code=502, detail="Upstream LLM provider error. Please retry.")
+        http_error = HTTPException(status_code=502, detail="Upstream LLM provider error. Please retry.", headers={"X-Request-ID": request_id})
     except ValueError as e:
         status, error_detail = "error", str(e)
-        http_error = HTTPException(status_code=502, detail="Invalid upstream LLM response. Please retry.")
+        http_error = HTTPException(status_code=502, detail="Invalid upstream LLM response. Please retry.", headers={"X-Request-ID": request_id})
     except CircuitOpenError as e:
         status, error_detail = "error", str(e)
-        http_error = HTTPException(status_code=503, detail="Service temporarily unavailable, please retry shortly.")
+        http_error = HTTPException(status_code=503, detail="Service temporarily unavailable, please retry shortly.", headers={"X-Request-ID": request_id})
     except Exception as e:
         status, error_detail = "error", str(e)
-        http_error = HTTPException(status_code=500, detail="Internal server error. Please try again.")
+        http_error = HTTPException(status_code=500, detail="Internal server error. Please try again.", headers={"X-Request-ID": request_id})
     finally:
         latency_ms = int((time.perf_counter() - start) * 1000)
-        log_request(db, request.prompt, request.goal, key, cache_type, latency_ms, status, error_detail)
+        log_request(db, request_id, request.prompt, request.goal, key, cache_type, latency_ms, status, error_detail)
+        logger.info(f"request_id={request_id} status={status} cache_type={cache_type} latency_ms={latency_ms}")
 
     if http_error:
         raise http_error
@@ -77,11 +83,14 @@ def optimize_prompt_endpoint(request: PromptRequest, _: None = Depends(verify_ap
     return PromptResponse(**result)
 
 @app.post("/compare", response_model=CompareResponse)
-def compare_prompts(request: CompareRequest, _: None = Depends(verify_api_key), __: None = Depends(check_rate_limit)):
+def compare_prompts(request: CompareRequest, response: Response, _: None = Depends(verify_api_key), __: None = Depends(check_rate_limit)):
+    request_id = str(uuid4())
+    response.headers["X-Request-ID"] = request_id
+        
     try:
         result = judge(request.prompt, request.goal, request.candidate_a, request.candidate_b)
     except Exception:
-        raise HTTPException(status_code=502, detail="Judge evaluation failed. Please retry.")
+        raise HTTPException(status_code=502, detail="Judge evaluation failed. Please retry.", headers={"X-Request-ID": request_id})
 
     winner = "a" if result["score_a"] > result["score_b"] else "b" if result["score_b"] > result["score_a"] else "tie"
 
