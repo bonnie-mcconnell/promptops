@@ -10,6 +10,7 @@
     --line: #dcdcd6;
     --ink: #1a1b1e;
     --muted: #6b6d76;
+    --dim: #a8aab2;
     --accent: #2451b8;
     --ok: #1f7a4d;
     --err: #b23a2e;
@@ -50,6 +51,29 @@
     color: var(--accent);
     margin-bottom: 12px;
   }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--dim);
+    flex-shrink: 0;
+  }
+  .status-dot.up { background: var(--ok); }
+  .status-dot.down { background: var(--err); }
+  @media (prefers-reduced-motion: no-preference) {
+    .status-dot.checking { animation: pulse 1.2s ease-in-out infinite; }
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
   label {
     display: block;
@@ -94,14 +118,17 @@
     border: 1px solid var(--line);
     padding: 20px;
     background: var(--panel);
+    display: flex;
+    flex-direction: column;
   }
 
   .readout {
     margin-top: 16px;
     border: 1px solid var(--line);
-    display: none;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
   }
-  .readout.visible { display: block; }
   .readout-head {
     font-family: var(--mono);
     font-size: 0.7rem;
@@ -109,10 +136,19 @@
     border-bottom: 1px solid var(--line);
     display: flex;
     justify-content: space-between;
-    color: var(--muted);
+    color: var(--dim);
   }
   .readout.ok .readout-head { color: var(--ok); }
   .readout.error .readout-head { color: var(--err); }
+  .readout-idle {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--dim);
+  }
   .row {
     display: grid;
     grid-template-columns: 100px 1fr;
@@ -143,6 +179,11 @@
   <div class="section-label">Authentication</div>
   <label for="api-key-input">API Key</label>
   <input id="api-key-input" type="password" placeholder="Paste your API key">
+
+  <div class="status-row">
+    <span id="status-dot" class="status-dot checking"></span>
+    <span id="status-text">checking api...</span>
+  </div>
 </div>
 
 <div class="main">
@@ -156,7 +197,9 @@
       <input id="goal-input" type="text" required>
       <button type="submit">Run</button>
     </form>
-    <div id="optimize-result" class="readout"></div>
+    <div id="optimize-result" class="readout">
+      <div class="readout-idle">awaiting request&hellip;</div>
+    </div>
   </div>
 
   <div class="panel">
@@ -172,13 +215,35 @@
       <textarea id="candidate-b-input" required></textarea>
       <button type="submit">Run</button>
     </form>
-    <div id="compare-result" class="readout"></div>
+    <div id="compare-result" class="readout">
+      <div class="readout-idle">awaiting request&hellip;</div>
+    </div>
   </div>
 
 </div>
 
 <script>
   const API_BASE = "https://promptops-api.onrender.com";
+
+  fetch(API_BASE + "/health")
+    .then(r => {
+      const dot = document.getElementById("status-dot");
+      const text = document.getElementById("status-text");
+      dot.classList.remove("checking");
+      if (r.ok) {
+        dot.classList.add("up");
+        text.textContent = "api online";
+      } else {
+        dot.classList.add("down");
+        text.textContent = "api unreachable";
+      }
+    })
+    .catch(() => {
+      const dot = document.getElementById("status-dot");
+      dot.classList.remove("checking");
+      dot.classList.add("down");
+      document.getElementById("status-text").textContent = "api unreachable";
+    });
 
   function getApiKey() {
     return document.getElementById("api-key-input").value;
@@ -197,7 +262,7 @@
 
   function renderReadout(div, outcome, rows) {
     div.classList.remove("ok", "error");
-    div.classList.add("visible", outcome.ok ? "ok" : "error");
+    div.classList.add(outcome.ok ? "ok" : "error");
     const head = `<div class="readout-head"><span>${outcome.status} ${outcome.ok ? "OK" : "ERROR"}</span><span>${outcome.requestId}</span></div>`;
     const body = outcome.ok
       ? rows.map(([k, v]) => `<div class="row"><dt>${k}</dt><dd>${v}</dd></div>`).join("")
