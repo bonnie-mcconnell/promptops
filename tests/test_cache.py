@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 from service import optimize_prompt
 from conftest import fake_openai_response
 
+
 def test_semantic_cache_hit_when_vectors_match(mock_embeddings):
     same_vector = [0.1] * 1536
     fake_embedding_response = MagicMock()

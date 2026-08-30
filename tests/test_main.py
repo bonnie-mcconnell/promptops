@@ -1,9 +1,11 @@
 import os
 import pytest
 import time
+from sqlalchemy import text
 
 from ratelimit import WINDOW_SECONDS, RATE_LIMIT_PER_MINUTE
 from cache import redis_client 
+from database import engine
 
 
 api_key = os.environ["API_KEY"]
@@ -77,6 +79,25 @@ def test_stats_valid_api_key(test_client):
     expected_fields = ["total", "exact_hits", "semantic_hits", "cache_misses", "errors", "avg_latency_ms", "p50_latency_ms", "p95_latency_ms"]
     for field in expected_fields:
         assert field in result
+
+
+def test_stats_empty_database(test_client):
+    with engine.connect() as conn:
+        conn.execute(text("DELETE FROM requests"))
+        conn.commit()
+
+    response = test_client.get("/stats", headers={"X-API-key": api_key})
+    result = response.json()
+
+    assert response.status_code == 200
+    assert result["total"] == 0
+    assert result["exact_hits"] == 0
+    assert result["semantic_hits"] == 0
+    assert result["cache_misses"] == 0
+    assert result["errors"] == 0
+    assert result["avg_latency_ms"] is None
+    assert result["p50_latency_ms"] is None
+    assert result["p95_latency_ms"] is None
 
 
 def test_rate_limit(test_client):

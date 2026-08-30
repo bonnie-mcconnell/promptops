@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Optional
 
 
 class PromptRequest(BaseModel):
@@ -56,6 +57,6 @@ class StatsResponse(BaseModel):
     semantic_hits: int
     cache_misses: int
     errors: int
-    avg_latency_ms: float
-    p50_latency_ms: float
-    p95_latency_ms: float
+    avg_latency_ms: Optional[float] = None
+    p50_latency_ms: Optional[float] = None
+    p95_latency_ms: Optional[float] = None

@@ -1,4 +1,3 @@
-import redis
 import time
 from fastapi import HTTPException, Depends
 

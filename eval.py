@@ -99,7 +99,7 @@ def run_comparison(variant_a_system_message: str, variant_b_system_message: str,
             continue
 
         scores_a.append(scores["score_a"])
-        scores_b.append(scores["score_b"]) # error handling anywhere in this function
+        scores_b.append(scores["score_b"]) 
         per_prompt_results.append({
             "prompt": item["prompt"],
             "goal": item["goal"],
