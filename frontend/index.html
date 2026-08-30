@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <title>PromptOps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
     --paper: #f7f7f5;
@@ -14,8 +17,8 @@
     --accent: #2451b8;
     --ok: #1f7a4d;
     --err: #b23a2e;
-    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
-    --sans: -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", monospace;
+    --sans: "Inter", -apple-system, "Segoe UI", sans-serif;
   }
   * { box-sizing: border-box; }
   body {
@@ -41,7 +44,7 @@
     margin: 0 0 10px;
   }
   h1::before { content: "> "; color: var(--accent); }
-  .subtitle { color: var(--muted); font-size: 0.88rem; line-height: 1.5; margin: 0 0 32px; }
+  .subtitle { color: var(--muted); font-size: 0.88rem; line-height: 1.55; margin: 0 0 32px; }
 
   .section-label {
     font-family: var(--mono);
@@ -101,6 +104,7 @@
     color: var(--paper);
     border: none;
     font-family: var(--mono);
+    font-weight: 500;
     font-size: 0.8rem;
     letter-spacing: 0.03em;
     padding: 9px 18px;
@@ -255,13 +259,24 @@
   }
 
   async function callApi(path, body) {
-    const response = await fetch(API_BASE + path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-API-Key": getApiKey() },
-      body: JSON.stringify(body)
-    });
+    let response;
+    try {
+      response = await fetch(API_BASE + path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-API-Key": getApiKey() },
+        body: JSON.stringify(body)
+      });
+    } catch (err) {
+      return { ok: false, status: "—", requestId: "n/a", data: { detail: "Could not reach the API. If it's been idle, it may be waking up, try again in a moment." } };
+    }
+
     const requestId = response.headers.get("X-Request-ID") || "n/a";
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (err) {
+      return { ok: false, status: response.status, requestId, data: { detail: "Server responded, but not with valid JSON. It may still be waking up." } };
+    }
     return { ok: response.ok, status: response.status, requestId, data };
   }
 
@@ -281,20 +296,15 @@
     const resultDiv = document.getElementById("optimize-result");
     button.disabled = true;
 
-    try {
-      const outcome = await callApi("/optimize", {
-        prompt: document.getElementById("prompt-input").value,
-        goal: document.getElementById("goal-input").value
-      });
-      renderReadout(resultDiv, outcome, [
-        ["optimized_prompt", outcome.data.optimized_prompt],
-        ["changes", outcome.data.changes]
-      ]);
-    } catch (err) {
-      renderReadout(resultDiv, { ok: false, status: "—", requestId: "n/a", data: { detail: "Network error, request never reached the server." } }, []);
-    } finally {
-      button.disabled = false;
-    }
+    const outcome = await callApi("/optimize", {
+      prompt: document.getElementById("prompt-input").value,
+      goal: document.getElementById("goal-input").value
+    });
+    renderReadout(resultDiv, outcome, [
+      ["optimized_prompt", outcome.data.optimized_prompt],
+      ["changes", outcome.data.changes]
+    ]);
+    button.disabled = false;
   });
 
   document.getElementById("compare-form").addEventListener("submit", async (event) => {
@@ -303,24 +313,19 @@
     const resultDiv = document.getElementById("compare-result");
     button.disabled = true;
 
-    try {
-      const outcome = await callApi("/compare", {
-        prompt: document.getElementById("cmp-prompt-input").value,
-        goal: document.getElementById("cmp-goal-input").value,
-        candidate_a: document.getElementById("candidate-a-input").value,
-        candidate_b: document.getElementById("candidate-b-input").value
-      });
-      renderReadout(resultDiv, outcome, [
-        ["winner", "candidate " + outcome.data.winner],
-        ["score_a", outcome.data.score_a],
-        ["score_b", outcome.data.score_b],
-        ["reasoning", outcome.data.reasoning]
-      ]);
-    } catch (err) {
-      renderReadout(resultDiv, { ok: false, status: "—", requestId: "n/a", data: { detail: "Network error, request never reached the server." } }, []);
-    } finally {
-      button.disabled = false;
-    }
+    const outcome = await callApi("/compare", {
+      prompt: document.getElementById("cmp-prompt-input").value,
+      goal: document.getElementById("cmp-goal-input").value,
+      candidate_a: document.getElementById("candidate-a-input").value,
+      candidate_b: document.getElementById("candidate-b-input").value
+    });
+    renderReadout(resultDiv, outcome, [
+      ["winner", "candidate " + outcome.data.winner],
+      ["score_a", outcome.data.score_a],
+      ["score_b", outcome.data.score_b],
+      ["reasoning", outcome.data.reasoning]
+    ]);
+    button.disabled = false;
   });
 </script>
 </body>
