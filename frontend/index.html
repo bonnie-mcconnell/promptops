@@ -77,6 +77,31 @@
     margin-bottom: 14px;
   }
 
+  .tabs {
+    display: flex;
+    border: 1px solid var(--line);
+    border-bottom: none;
+  }
+  .tab {
+    flex: 1;
+    background: var(--paper);
+    border: none;
+    border-right: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    letter-spacing: 0.03em;
+    padding: 12px;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .tab:last-child { border-right: none; }
+  .tab:hover { color: var(--ink); }
+  .tab.active { background: var(--ink); color: var(--paper); }
+
+  .tab-content { border: 1px solid var(--line); background: var(--panel); padding: 22px; margin-bottom: 24px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
   label {
     display: block;
     font-family: var(--mono);
@@ -97,7 +122,7 @@
   textarea { min-height: 110px; resize: vertical; line-height: 1.5; }
   input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 
-  button {
+  button.run {
     margin-top: 16px;
     background: var(--ink);
     color: var(--paper);
@@ -109,8 +134,8 @@
     padding: 10px 20px;
     cursor: pointer;
   }
-  button:hover { background: var(--accent); }
-  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.run:hover { background: var(--accent); }
+  button.run:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .readout {
     margin-top: 18px;
@@ -132,14 +157,14 @@
   .readout.error .readout-head { color: var(--err); }
   .row {
     display: grid;
-    grid-template-columns: 110px 1fr;
+    grid-template-columns: 150px 1fr;
     padding: 10px 12px;
     font-size: 0.9rem;
     line-height: 1.5;
     border-bottom: 1px solid #eee;
   }
   .row:last-child { border-bottom: none; }
-  .row dt { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
+  .row dt { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); word-break: break-word; }
   .row dd { margin: 0; word-break: break-word; }
 </style>
 </head>
@@ -162,36 +187,50 @@
   <input id="api-key-input" type="password" placeholder="Paste your API key">
 </div>
 
-<div class="section">
-  <div class="section-label">/optimize</div>
-  <form id="optimize-form">
-    <label for="prompt-input">Prompt</label>
-    <textarea id="prompt-input" required></textarea>
-    <label for="goal-input">Goal</label>
-    <input id="goal-input" type="text" required>
-    <button type="submit">Run</button>
-  </form>
-  <div id="optimize-result" class="readout"></div>
+<div class="tabs">
+  <button class="tab active" data-tab="optimize">/optimize</button>
+  <button class="tab" data-tab="compare">/compare</button>
 </div>
 
-<div class="section">
-  <div class="section-label">/compare</div>
-  <form id="compare-form">
-    <label for="cmp-prompt-input">Prompt</label>
-    <textarea id="cmp-prompt-input" required></textarea>
-    <label for="cmp-goal-input">Goal</label>
-    <input id="cmp-goal-input" type="text" required>
-    <label for="candidate-a-input">Candidate A</label>
-    <textarea id="candidate-a-input" required></textarea>
-    <label for="candidate-b-input">Candidate B</label>
-    <textarea id="candidate-b-input" required></textarea>
-    <button type="submit">Run</button>
-  </form>
-  <div id="compare-result" class="readout"></div>
+<div class="tab-content">
+  <div id="optimize-panel" class="tab-panel active">
+    <form id="optimize-form">
+      <label for="prompt-input">Prompt</label>
+      <textarea id="prompt-input" required></textarea>
+      <label for="goal-input">Goal</label>
+      <input id="goal-input" type="text" required>
+      <button class="run" type="submit">Run</button>
+    </form>
+    <div id="optimize-result" class="readout"></div>
+  </div>
+
+  <div id="compare-panel" class="tab-panel">
+    <form id="compare-form">
+      <label for="cmp-prompt-input">Prompt</label>
+      <textarea id="cmp-prompt-input" required></textarea>
+      <label for="cmp-goal-input">Goal</label>
+      <input id="cmp-goal-input" type="text" required>
+      <label for="candidate-a-input">Candidate A</label>
+      <textarea id="candidate-a-input" required></textarea>
+      <label for="candidate-b-input">Candidate B</label>
+      <textarea id="candidate-b-input" required></textarea>
+      <button class="run" type="submit">Run</button>
+    </form>
+    <div id="compare-result" class="readout"></div>
+  </div>
 </div>
 
 <script>
   const API_BASE = "https://promptops-api.onrender.com";
+
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+      tab.classList.add("active");
+      document.getElementById(tab.dataset.tab + "-panel").classList.add("active");
+    });
+  });
 
   const statusDot = document.getElementById("status-dot");
   const statusText = document.getElementById("status-text");

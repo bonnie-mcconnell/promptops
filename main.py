@@ -42,6 +42,7 @@ app.add_middleware(
     allow_origins=["http://localhost:5500", "https://promptops-frontend.onrender.com"],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID"],
 )
 
 
