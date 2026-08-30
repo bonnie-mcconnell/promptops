@@ -109,25 +109,30 @@
   button:hover { background: var(--accent); }
   button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  .main {
+  .console {
+    border: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .console-head {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .console-body {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 24px;
   }
-  .panel {
-    border: 1px solid var(--line);
-    padding: 20px;
-    background: var(--panel);
-    display: flex;
-    flex-direction: column;
-  }
+  .console-col { padding: 20px; }
+  .console-col + .console-col { border-left: 1px solid var(--line); }
 
   .readout {
     margin-top: 16px;
     border: 1px solid var(--line);
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+    min-height: 110px;
   }
   .readout-head {
     font-family: var(--mono);
@@ -141,9 +146,6 @@
   .readout.ok .readout-head { color: var(--ok); }
   .readout.error .readout-head { color: var(--err); }
   .readout-idle {
-    flex: 1;
-    display: flex;
-    align-items: center;
     padding: 12px;
     font-family: var(--mono);
     font-size: 0.8rem;
@@ -163,7 +165,8 @@
   @media (max-width: 860px) {
     body { grid-template-columns: 1fr; padding: 32px 20px 60px; }
     .sidebar { position: static; }
-    .main { grid-template-columns: 1fr; }
+    .console-body { grid-template-columns: 1fr; }
+    .console-col + .console-col { border-left: none; border-top: 1px solid var(--line); }
   }
 </style>
 </head>
@@ -176,7 +179,6 @@
     statistical A/B testing. This is a live demo.
   </p>
 
-  <div class="section-label">Authentication</div>
   <label for="api-key-input">API Key</label>
   <input id="api-key-input" type="password" placeholder="Paste your API key">
 
@@ -186,63 +188,66 @@
   </div>
 </div>
 
-<div class="main">
+<div class="console">
+  <div class="console-head">api playground</div>
+  <div class="console-body">
 
-  <div class="panel">
-    <div class="section-label">/optimize</div>
-    <form id="optimize-form">
-      <label for="prompt-input">Prompt</label>
-      <textarea id="prompt-input" required></textarea>
-      <label for="goal-input">Goal</label>
-      <input id="goal-input" type="text" required>
-      <button type="submit">Run</button>
-    </form>
-    <div id="optimize-result" class="readout">
-      <div class="readout-idle">awaiting request&hellip;</div>
+    <div class="console-col">
+      <div class="section-label">/optimize</div>
+      <form id="optimize-form">
+        <label for="prompt-input">Prompt</label>
+        <textarea id="prompt-input" required></textarea>
+        <label for="goal-input">Goal</label>
+        <input id="goal-input" type="text" required>
+        <button type="submit">Run</button>
+      </form>
+      <div id="optimize-result" class="readout">
+        <div class="readout-idle">awaiting request&hellip;</div>
+      </div>
     </div>
-  </div>
 
-  <div class="panel">
-    <div class="section-label">/compare</div>
-    <form id="compare-form">
-      <label for="cmp-prompt-input">Prompt</label>
-      <textarea id="cmp-prompt-input" required></textarea>
-      <label for="cmp-goal-input">Goal</label>
-      <input id="cmp-goal-input" type="text" required>
-      <label for="candidate-a-input">Candidate A</label>
-      <textarea id="candidate-a-input" required></textarea>
-      <label for="candidate-b-input">Candidate B</label>
-      <textarea id="candidate-b-input" required></textarea>
-      <button type="submit">Run</button>
-    </form>
-    <div id="compare-result" class="readout">
-      <div class="readout-idle">awaiting request&hellip;</div>
+    <div class="console-col">
+      <div class="section-label">/compare</div>
+      <form id="compare-form">
+        <label for="cmp-prompt-input">Prompt</label>
+        <textarea id="cmp-prompt-input" required></textarea>
+        <label for="cmp-goal-input">Goal</label>
+        <input id="cmp-goal-input" type="text" required>
+        <label for="candidate-a-input">Candidate A</label>
+        <textarea id="candidate-a-input" required></textarea>
+        <label for="candidate-b-input">Candidate B</label>
+        <textarea id="candidate-b-input" required></textarea>
+        <button type="submit">Run</button>
+      </form>
+      <div id="compare-result" class="readout">
+        <div class="readout-idle">awaiting request&hellip;</div>
+      </div>
     </div>
-  </div>
 
+  </div>
 </div>
 
 <script>
   const API_BASE = "https://promptops-api.onrender.com";
 
+  const statusDot = document.getElementById("status-dot");
+  const statusText = document.getElementById("status-text");
+  const slowTimer = setTimeout(() => {
+    statusText.textContent = "waking service (free tier, ~30s)...";
+  }, 4000);
+
   fetch(API_BASE + "/health")
     .then(r => {
-      const dot = document.getElementById("status-dot");
-      const text = document.getElementById("status-text");
-      dot.classList.remove("checking");
-      if (r.ok) {
-        dot.classList.add("up");
-        text.textContent = "api online";
-      } else {
-        dot.classList.add("down");
-        text.textContent = "api unreachable";
-      }
+      clearTimeout(slowTimer);
+      statusDot.classList.remove("checking");
+      statusDot.classList.add(r.ok ? "up" : "down");
+      statusText.textContent = r.ok ? "api online" : "api unreachable";
     })
     .catch(() => {
-      const dot = document.getElementById("status-dot");
-      dot.classList.remove("checking");
-      dot.classList.add("down");
-      document.getElementById("status-text").textContent = "api unreachable";
+      clearTimeout(slowTimer);
+      statusDot.classList.remove("checking");
+      statusDot.classList.add("down");
+      statusText.textContent = "api unreachable";
     });
 
   function getApiKey() {
@@ -266,7 +271,7 @@
     const head = `<div class="readout-head"><span>${outcome.status} ${outcome.ok ? "OK" : "ERROR"}</span><span>${outcome.requestId}</span></div>`;
     const body = outcome.ok
       ? rows.map(([k, v]) => `<div class="row"><dt>${k}</dt><dd>${v}</dd></div>`).join("")
-      : `<div class="row"><dt>detail</dt><dd>${outcome.data.detail || "Unknown error"}</dd></div>`;
+      : `<div class="row"><dt>detail</dt><dd>${(outcome.data && outcome.data.detail) || "Unknown error"}</dd></div>`;
     div.innerHTML = head + body;
   }
 
@@ -276,16 +281,20 @@
     const resultDiv = document.getElementById("optimize-result");
     button.disabled = true;
 
-    const outcome = await callApi("/optimize", {
-      prompt: document.getElementById("prompt-input").value,
-      goal: document.getElementById("goal-input").value
-    });
-
-    renderReadout(resultDiv, outcome, [
-      ["optimized_prompt", outcome.data.optimized_prompt],
-      ["changes", outcome.data.changes]
-    ]);
-    button.disabled = false;
+    try {
+      const outcome = await callApi("/optimize", {
+        prompt: document.getElementById("prompt-input").value,
+        goal: document.getElementById("goal-input").value
+      });
+      renderReadout(resultDiv, outcome, [
+        ["optimized_prompt", outcome.data.optimized_prompt],
+        ["changes", outcome.data.changes]
+      ]);
+    } catch (err) {
+      renderReadout(resultDiv, { ok: false, status: "—", requestId: "n/a", data: { detail: "Network error, request never reached the server." } }, []);
+    } finally {
+      button.disabled = false;
+    }
   });
 
   document.getElementById("compare-form").addEventListener("submit", async (event) => {
@@ -294,20 +303,24 @@
     const resultDiv = document.getElementById("compare-result");
     button.disabled = true;
 
-    const outcome = await callApi("/compare", {
-      prompt: document.getElementById("cmp-prompt-input").value,
-      goal: document.getElementById("cmp-goal-input").value,
-      candidate_a: document.getElementById("candidate-a-input").value,
-      candidate_b: document.getElementById("candidate-b-input").value
-    });
-
-    renderReadout(resultDiv, outcome, [
-      ["winner", "candidate " + outcome.data.winner],
-      ["score_a", outcome.data.score_a],
-      ["score_b", outcome.data.score_b],
-      ["reasoning", outcome.data.reasoning]
-    ]);
-    button.disabled = false;
+    try {
+      const outcome = await callApi("/compare", {
+        prompt: document.getElementById("cmp-prompt-input").value,
+        goal: document.getElementById("cmp-goal-input").value,
+        candidate_a: document.getElementById("candidate-a-input").value,
+        candidate_b: document.getElementById("candidate-b-input").value
+      });
+      renderReadout(resultDiv, outcome, [
+        ["winner", "candidate " + outcome.data.winner],
+        ["score_a", outcome.data.score_a],
+        ["score_b", outcome.data.score_b],
+        ["reasoning", outcome.data.reasoning]
+      ]);
+    } catch (err) {
+      renderReadout(resultDiv, { ok: false, status: "—", requestId: "n/a", data: { detail: "Network error, request never reached the server." } }, []);
+    } finally {
+      button.disabled = false;
+    }
   });
 </script>
 </body>
