@@ -25,17 +25,12 @@
     background: var(--paper);
     color: var(--ink);
     font-family: var(--sans);
-    max-width: 1100px;
+    max-width: 720px;
     margin: 0 auto;
-    padding: 56px 32px 80px;
-    display: grid;
-    grid-template-columns: 260px 1fr;
-    gap: 48px;
-    align-items: start;
+    padding: 56px 24px 80px;
   }
 
-  .sidebar { position: sticky; top: 56px; }
-
+  header { border-bottom: 1px solid var(--line); padding-bottom: 24px; margin-bottom: 28px; }
   h1 {
     font-family: var(--mono);
     font-size: 1.4rem;
@@ -44,27 +39,16 @@
     margin: 0 0 10px;
   }
   h1::before { content: "> "; color: var(--accent); }
-  .subtitle { color: var(--muted); font-size: 0.88rem; line-height: 1.55; margin: 0 0 32px; }
-
-  .section-label {
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 12px;
-  }
+  .subtitle { color: var(--muted); font-size: 0.9rem; line-height: 1.55; margin: 0; }
 
   .status-row {
     display: flex;
     align-items: center;
     gap: 8px;
     font-family: var(--mono);
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     color: var(--muted);
-    margin-top: 32px;
-    padding-top: 20px;
-    border-top: 1px solid var(--line);
+    margin-top: 16px;
   }
   .status-dot {
     width: 7px; height: 7px; border-radius: 50%;
@@ -78,157 +62,132 @@
   }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
+  .section {
+    border: 1px solid var(--line);
+    background: var(--panel);
+    padding: 22px;
+    margin-bottom: 24px;
+  }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+
   label {
     display: block;
     font-family: var(--mono);
     font-size: 0.76rem;
     color: var(--muted);
-    margin: 12px 0 5px;
+    margin: 14px 0 5px;
   }
   label:first-of-type { margin-top: 0; }
   input, textarea {
     width: 100%;
-    background: var(--panel);
+    background: var(--paper);
     border: 1px solid var(--line);
     color: var(--ink);
-    padding: 9px 11px;
+    padding: 10px 12px;
     font-family: var(--sans);
-    font-size: 0.9rem;
+    font-size: 0.92rem;
   }
-  textarea { min-height: 60px; resize: vertical; font-family: var(--mono); font-size: 0.82rem; }
+  textarea { min-height: 110px; resize: vertical; line-height: 1.5; }
   input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 
   button {
-    margin-top: 14px;
+    margin-top: 16px;
     background: var(--ink);
     color: var(--paper);
     border: none;
     font-family: var(--mono);
     font-weight: 500;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     letter-spacing: 0.03em;
-    padding: 9px 18px;
+    padding: 10px 20px;
     cursor: pointer;
   }
   button:hover { background: var(--accent); }
   button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  .console {
-    border: 1px solid var(--line);
-    background: var(--panel);
-  }
-  .console-head {
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--line);
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .console-body {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
-  .console-col { padding: 20px; }
-  .console-col + .console-col { border-left: 1px solid var(--line); }
-
   .readout {
-    margin-top: 16px;
+    margin-top: 18px;
     border: 1px solid var(--line);
-    min-height: 110px;
+    display: none;
   }
+  .readout.visible { display: block; }
   .readout-head {
     font-family: var(--mono);
-    font-size: 0.7rem;
-    padding: 8px 12px;
+    font-size: 0.72rem;
+    padding: 9px 12px;
     border-bottom: 1px solid var(--line);
     display: flex;
     justify-content: space-between;
     color: var(--dim);
   }
+  .readout.pending .readout-head { color: var(--muted); }
   .readout.ok .readout-head { color: var(--ok); }
   .readout.error .readout-head { color: var(--err); }
-  .readout-idle {
-    padding: 12px;
-    font-family: var(--mono);
-    font-size: 0.8rem;
-    color: var(--dim);
-  }
   .row {
     display: grid;
-    grid-template-columns: 100px 1fr;
-    padding: 8px 12px;
-    font-size: 0.85rem;
+    grid-template-columns: 110px 1fr;
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    line-height: 1.5;
     border-bottom: 1px solid #eee;
   }
   .row:last-child { border-bottom: none; }
   .row dt { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
   .row dd { margin: 0; word-break: break-word; }
-
-  @media (max-width: 860px) {
-    body { grid-template-columns: 1fr; padding: 32px 20px 60px; }
-    .sidebar { position: static; }
-    .console-body { grid-template-columns: 1fr; }
-    .console-col + .console-col { border-left: none; border-top: 1px solid var(--line); }
-  }
 </style>
 </head>
 <body>
 
-<div class="sidebar">
+<header>
   <h1>PromptOps</h1>
   <p class="subtitle">
     Prompt-optimization API with caching, retries, circuit breakers, and
     statistical A/B testing. This is a live demo.
   </p>
-
-  <label for="api-key-input">API Key</label>
-  <input id="api-key-input" type="password" placeholder="Paste your API key">
-
   <div class="status-row">
     <span id="status-dot" class="status-dot checking"></span>
     <span id="status-text">checking api...</span>
   </div>
+</header>
+
+<div class="section">
+  <label for="api-key-input">API Key</label>
+  <input id="api-key-input" type="password" placeholder="Paste your API key">
 </div>
 
-<div class="console">
-  <div class="console-head">api playground</div>
-  <div class="console-body">
+<div class="section">
+  <div class="section-label">/optimize</div>
+  <form id="optimize-form">
+    <label for="prompt-input">Prompt</label>
+    <textarea id="prompt-input" required></textarea>
+    <label for="goal-input">Goal</label>
+    <input id="goal-input" type="text" required>
+    <button type="submit">Run</button>
+  </form>
+  <div id="optimize-result" class="readout"></div>
+</div>
 
-    <div class="console-col">
-      <div class="section-label">/optimize</div>
-      <form id="optimize-form">
-        <label for="prompt-input">Prompt</label>
-        <textarea id="prompt-input" required></textarea>
-        <label for="goal-input">Goal</label>
-        <input id="goal-input" type="text" required>
-        <button type="submit">Run</button>
-      </form>
-      <div id="optimize-result" class="readout">
-        <div class="readout-idle">awaiting request&hellip;</div>
-      </div>
-    </div>
-
-    <div class="console-col">
-      <div class="section-label">/compare</div>
-      <form id="compare-form">
-        <label for="cmp-prompt-input">Prompt</label>
-        <textarea id="cmp-prompt-input" required></textarea>
-        <label for="cmp-goal-input">Goal</label>
-        <input id="cmp-goal-input" type="text" required>
-        <label for="candidate-a-input">Candidate A</label>
-        <textarea id="candidate-a-input" required></textarea>
-        <label for="candidate-b-input">Candidate B</label>
-        <textarea id="candidate-b-input" required></textarea>
-        <button type="submit">Run</button>
-      </form>
-      <div id="compare-result" class="readout">
-        <div class="readout-idle">awaiting request&hellip;</div>
-      </div>
-    </div>
-
-  </div>
+<div class="section">
+  <div class="section-label">/compare</div>
+  <form id="compare-form">
+    <label for="cmp-prompt-input">Prompt</label>
+    <textarea id="cmp-prompt-input" required></textarea>
+    <label for="cmp-goal-input">Goal</label>
+    <input id="cmp-goal-input" type="text" required>
+    <label for="candidate-a-input">Candidate A</label>
+    <textarea id="candidate-a-input" required></textarea>
+    <label for="candidate-b-input">Candidate B</label>
+    <textarea id="candidate-b-input" required></textarea>
+    <button type="submit">Run</button>
+  </form>
+  <div id="compare-result" class="readout"></div>
 </div>
 
 <script>
@@ -280,9 +239,15 @@
     return { ok: response.ok, status: response.status, requestId, data };
   }
 
-  function renderReadout(div, outcome, rows) {
+  function setPending(div) {
     div.classList.remove("ok", "error");
-    div.classList.add(outcome.ok ? "ok" : "error");
+    div.classList.add("visible", "pending");
+    div.innerHTML = `<div class="readout-head"><span>running...</span><span></span></div>`;
+  }
+
+  function renderReadout(div, outcome, rows) {
+    div.classList.remove("pending", "ok", "error");
+    div.classList.add("visible", outcome.ok ? "ok" : "error");
     const head = `<div class="readout-head"><span>${outcome.status} ${outcome.ok ? "OK" : "ERROR"}</span><span>${outcome.requestId}</span></div>`;
     const body = outcome.ok
       ? rows.map(([k, v]) => `<div class="row"><dt>${k}</dt><dd>${v}</dd></div>`).join("")
@@ -295,6 +260,7 @@
     const button = event.target.querySelector("button");
     const resultDiv = document.getElementById("optimize-result");
     button.disabled = true;
+    setPending(resultDiv);
 
     const outcome = await callApi("/optimize", {
       prompt: document.getElementById("prompt-input").value,
@@ -312,6 +278,7 @@
     const button = event.target.querySelector("button");
     const resultDiv = document.getElementById("compare-result");
     button.disabled = true;
+    setPending(resultDiv);
 
     const outcome = await callApi("/compare", {
       prompt: document.getElementById("cmp-prompt-input").value,
