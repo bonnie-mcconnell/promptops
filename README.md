@@ -4,9 +4,15 @@ A prompt-optimization API that started as a FastAPI tutorial exercise and grew i
 
 ![CI](https://github.com/bonnie-mcconnell/promptops/actions/workflows/ci.yml/badge.svg)
 
+This is deployed using Render, both API and a frontend service. First request after inactivity may take 30-60s due to Render's free tier.
+
+[API](https://promptops-api.onrender.com/docs)
+
+[Frontend](https://promptops-frontend.onrender.com/)
+
 Given a prompt and a goal, this service returns an optimized version of that prompt, an exploration of what changed, caches aggressively (with both exact match and semantic caching), degrades gracefully when the upstream LLM is unreliable, and logs enough about every request to answer 'what happened, and why' after the fact.
 
-This project is interested in the problems that start after 'call the API, format the output'. The upstream call is unreliable and not cheap, a naive cache only catches literal duplicate traffic, and "we changed the prompt and it feels better" is just a guess. This project is an attempt to address those three things, not just the happy path.
+This project is interested in the problems that start after 'call the API, format the output'. The upstream call is unreliable and not cheap, a naive cache only catches literal duplicate traffic, and "we changed the prompt and it feels better" is just a guess. 
 
 ## Architecture
 
@@ -150,6 +156,16 @@ above is for), but it's a direct, practical use of the same judging logic for
 anyone who wants to A/B test their own prompt wording rather than trust
 either variant blindly.
 
+## Frontend
+
+The deployed Render service includes a basic frontend for the `/optimize` and
+`/compare` endpoints, with API-Key authentication. It's a single static HTML
+file with vanilla JavaScript deployed
+separately from the API as its own Render Static Site, communicating with the
+API over CORS. It surfaces the same `X-Request-ID` header the API returns on
+every response, so a result shown in the browser can be traced back to its
+exact log line and database row.
+
 ## Observability
 
 `GET /stats` (also behind auth, but not rate-limited since it has no
@@ -185,4 +201,3 @@ docker compose exec api pytest -v
   coordinate correctly across multiple replicas)
 - A second, independent judge provider for a stronger self-preference-bias
   control
-- A minimal frontend for trying `/optimize` and `/compare` without curl or `/docs`
