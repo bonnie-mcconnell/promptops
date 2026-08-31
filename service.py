@@ -1,21 +1,31 @@
 import json
+import logging
+from typing import Optional
 
 from cache import cache_key, semantic_cache_lookup, store_semantic_cache, redis_client
 from llm import call_llm, build_user_message
 
 
-def optimize_prompt(prompt: str, goal: str) -> tuple[dict, str]:
+logger = logging.getLogger(__name__)
+
+def optimize_prompt(prompt: str, goal: str) -> tuple[dict, str, Optional[str]]:
     """Send a prompt to the LLM for optimization and return structured results."""
 
     key = cache_key(prompt, goal)
     cached = redis_client.get(key)
     if cached:
-         return json.loads(cached), "exact"
+         return json.loads(cached), "exact", None
     
+    sem_cached = None
+    degradation_warning = None
+    try:
+        sem_cached = semantic_cache_lookup(prompt, goal)
+    except Exception as e:
+        logger.warning(f"Semantic lookup failed with error: {e}")
+        degradation_warning = f"Semantic cache lookup failed with error: {e}."
 
-    sem_cached = semantic_cache_lookup(prompt, goal)
     if sem_cached:
-        return sem_cached, "semantic"
+        return sem_cached, "semantic", degradation_warning
 
     system_message = """You are a prompt engineering expert. Your job is to improve 
     prompts so they produce better results from language models.
@@ -32,17 +42,22 @@ def optimize_prompt(prompt: str, goal: str) -> tuple[dict, str]:
 
     result = call_llm(prompt, system_message, user_message)
     redis_client.set(key, json.dumps(result), ex=3600)
-    store_semantic_cache(prompt, goal, result)
 
-    return result, "none"
+    try:
+        store_semantic_cache(prompt, goal, result)
+    except Exception as e:
+        logger.warning(f"Storing result in semantic cache failed with error: {e}")
+        degradation_warning = f"Failed to store result in semantic cache: {e}"
+
+    return result, "none", degradation_warning
 
 
-def optimize_prompt_mock(prompt: str, goal: str) -> tuple[dict, str]:
+def optimize_prompt_mock(prompt: str, goal: str) -> tuple[dict, str, Optional[str]]:
     """Mock implementation for testing FastAPI routes without API credits."""
     key = cache_key(prompt, goal)
     cached = redis_client.get(key)
     if cached:
-         return json.loads(cached), "exact"
+         return json.loads(cached), "exact", None
     
     result = {
         "original_prompt": prompt,
@@ -51,4 +66,4 @@ def optimize_prompt_mock(prompt: str, goal: str) -> tuple[dict, str]:
     }
 
     redis_client.set(key, json.dumps(result), ex=3600)
-    return result, "none"
+    return result, "none", None

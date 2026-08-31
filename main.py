@@ -67,7 +67,9 @@ def optimize_prompt_endpoint(request: PromptRequest, response: Response, _: None
     result = None
 
     try:
-        result, cache_type = optimizer(request.prompt, request.goal)
+        result, cache_type, degradation_warning = optimizer(request.prompt, request.goal)
+        if degradation_warning is not None:
+            error_detail = degradation_warning
     except APIStatusError as e:
         status, error_detail = "error", str(e)
         http_error = HTTPException(status_code=502, detail="Upstream LLM provider error. Please retry.", headers={"X-Request-ID": request_id})
