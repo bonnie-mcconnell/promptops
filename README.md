@@ -6,9 +6,9 @@ A prompt-optimization API that started as a FastAPI tutorial exercise and grew i
 
 This is deployed using Render, both API and a frontend service. First request after inactivity may take 30-60s due to Render's free tier.
 
-[API](https://promptops-api.onrender.com/docs)
+[PromptOps API](https://promptops-api.onrender.com/docs)
 
-[Frontend](https://promptops-frontend.onrender.com/)
+[PromptOps Frontend](https://promptops-frontend.onrender.com/)
 
 Given a prompt and a goal, this service returns an optimized version of that prompt, an exploration of what changed, caches aggressively (with both exact match and semantic caching), degrades gracefully when the upstream LLM is unreliable, and logs enough about every request to answer 'what happened, and why' after the fact.
 

@@ -42,13 +42,17 @@ def create_vector_index():
     )
 
 
+def _hash_prompt_goal(prompt: str, goal: str) -> str:
+    return hashlib.sha256(f"{prompt}|{goal}".encode()).hexdigest()
+
+
 def cache_key(prompt: str, goal: str) -> str:
-    return "opt:" + hashlib.sha256(f"{prompt}|{goal}".encode()).hexdigest()
+    return "opt:" + _hash_prompt_goal(prompt, goal)
 
 
 def store_semantic_cache(prompt, goal, result):
     embedding = embed_text(prompt, goal)
-    key = "semantic:" + hashlib.sha256(f"{prompt}|{goal}".encode()).hexdigest()
+    key = "semantic:" + _hash_prompt_goal(prompt, goal)
     redis_client.hset(
         key, 
         mapping={
