@@ -6,7 +6,6 @@ from redis.commands.search.field import VectorField, TextField
 from redis.commands.search.index_definition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
 
-
 from llm import embed_text
 
 

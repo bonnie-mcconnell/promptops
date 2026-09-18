@@ -6,6 +6,8 @@ from sqlalchemy import text
 from ratelimit import WINDOW_SECONDS, RATE_LIMIT_PER_MINUTE
 from cache import redis_client 
 from database import engine
+from service import optimize_prompt_mock
+from eval import judge_output_mock
 
 
 api_key = os.environ["API_KEY"]
@@ -53,7 +55,8 @@ def test_invalid_api_key(test_client, method, path, body):
     assert result["detail"] == "Invalid or missing API key"
 
 
-def test_optimize_valid_api_key(test_client):
+def test_optimize_valid_api_key(test_client, monkeypatch):
+    monkeypatch.setattr("main.optimizer", optimize_prompt_mock)
     response = test_client.post("/optimize", json=OPTIMIZE_BODY, headers={"X-API-Key": api_key})
     result = response.json()
     assert response.status_code == 200
@@ -62,7 +65,8 @@ def test_optimize_valid_api_key(test_client):
     assert result["changes"] == "Added persona framing, context structure, and clear constraints."
 
 
-def test_compare_valid_api_key(test_client):
+def test_compare_valid_api_key(test_client, monkeypatch):
+    monkeypatch.setattr("main.judge", judge_output_mock)
     response = test_client.post("/compare", json=COMPARE_BODY, headers={"X-API-Key": api_key})
     result = response.json()
     assert response.status_code == 200

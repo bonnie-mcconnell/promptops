@@ -30,7 +30,7 @@ Goal: {goal}
 
 Optimize this prompt to better achieve the stated goal."""
 
-def call_llm(prompt: str, system_message: str, user_message: str):
+def call_llm(prompt: str, system_message: str, user_message: str, temperature: float = 0.7):
     def _call():
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -39,7 +39,7 @@ def call_llm(prompt: str, system_message: str, user_message: str):
                 {"role": "user", "content": user_message}
             ],
             response_format={"type": "json_object"},
-            temperature=0.7,
+            temperature=temperature,
             max_tokens=800,
         )
 
