@@ -90,8 +90,8 @@ def run_comparison(variant_a_system_message: str, variant_b_system_message: str,
         user_message = build_user_message(item["prompt"], item["goal"])
         
         try:
-            output_a = call_llm(item["prompt"], variant_a_system_message, user_message)
-            output_b = call_llm(item["prompt"], variant_b_system_message, user_message)
+            output_a = call_llm(item["prompt"], variant_a_system_message, user_message, 0.2)
+            output_b = call_llm(item["prompt"], variant_b_system_message, user_message, 0.2)
 
             scores = judge_output(item["prompt"], item["goal"], output_a["optimized_prompt"], output_b["optimized_prompt"])
         except Exception as e:
@@ -115,7 +115,9 @@ def run_comparison(variant_a_system_message: str, variant_b_system_message: str,
     p_value = cast(float, p_value)  
 
     differences = [b - a for a, b in zip(scores_a, scores_b)]
+    mean_diff = statistics.mean(differences)
     median_diff = statistics.median(differences)
+    stdev_diff = statistics.stdev(differences)
 
     if p_value < 0.05:
         conclusion = f"""Statistically significant difference (p={p_value:.4f}). Median improvement: {median_diff:+.1f} points."""
@@ -125,6 +127,8 @@ def run_comparison(variant_a_system_message: str, variant_b_system_message: str,
     return {
         "p_value": p_value,
         "median_difference": median_diff,
+        "mean_difference": mean_diff,
+        "stdev_difference": stdev_diff,
         "n_compared": len(scores_a),
         "n_skipped": skipped,
         "conclusion": conclusion,
