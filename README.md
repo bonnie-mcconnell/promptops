@@ -114,7 +114,7 @@ exact brute-force search costs single-digit milliseconds. Using HNSW would mean 
 
 **Wilcoxon signed-rank test, not a paired t-test:** for comparing prompt
 variants. A t-test assumes the paired differences are roughly normally
-distributed, which is reasonable for large samples of continuous data, but less reliable for a bounded 1–10 LLM-judge scale with a modest sample size as in this project. Wilcoxon works on the ranks of the differences instead of their raw magnitudes, which is more robust to that shape of data. The harness
+distributed, which is reasonable for large samples of continuous data, but less reliable for a bounded 1–10 LLM-judge scale with a modest sample size as in this project. Wilcoxon works on the ranks of the differences instead of their raw magnitudes, which is more robust to this data's shape. The harness
 reports both a p-value and a median-difference effect size, since a statistically detectable difference and a practically meaningful one aren't the same.
 
 **The LLM judge is a different model than the one being evaluated:**
@@ -125,20 +125,42 @@ first is also randomized per comparison, to control for judge position bias
 (judges favouring whichever option
 appears first, independent of quality). It would be a stronger control to have a fully independent judge from a different provider,  than just a different model from the same provider.
 
-**Semantic caching is a second, parallel cache, not a replacement for
+**Semantic caching is a second parallel cache, not a replacement for
 exact-match:** Exact-match is cheaper (a plain key lookup, no embedding call)
 and exact, so it's checked first. Semantic search only runs on an exact-match
 miss.
 
+**Eval-time temperature is lower than production's:** `/optimize` runs at
+temperature=0.7 for output variety for someone generating prompts. The
+eval harness runs the same two system messages at temperature=0.2 to isolate the effect being measured (does the system message wording matter)
+from an unrelated source of variance (does the model's sampling randomness
+happen to favor one run over another). A full run at production temperature
+would need a much larger sample to have the same statistical power.
+
 ## Evaluation harness
  
 `eval.py` takes two system-message variants, currently set to the shipped
-persona-framing prompt against a bare-minimum control, comparing them across a 16-prompt
-hand-built set deliberately spanning creative, informational, technical,
-business, and persuasive tasks, and both vague and tightly-specified goals.
+persona-framing prompt against a bare-minimum control, comparing them across a 61-prompt
+hand-built set including creative, informational, technical, business, instructional, ambiguous and persuasive tasks, both vague and tightly-specified goals.
 For each prompt, both variants are run, an LLM judge scores each output
 1–10 against an anchored rubric (5 = no better than doing nothing), and the
 paired scores are compared with `scipy.stats.wilcoxon`.
+
+An initial 17-prompt pilot run produced a p-value closer to the significance threshold, and it's observed variance was used to run a power analysis (Cohen's dz for a paired tests, a=0.05, 80% power, targeting a half -point minimum meaningful effect), which indicated around 55 prompts were needed.
+
+### Results
+
+| | |
+|---|---|
+| n (prompts compared) | 61 (0 skipped) |
+| p-value | 0.0067 |
+| Mean difference | +0.41 (persona scored higher on average) |
+| Median difference | +1.0 |
+| Effect size (Cohen's dz) | ≈0.37 (small-to-medium) |
+
+The persona-framed system message produced a statistically significant
+improvement over the bare-minimum control (p=0.0067, α=0.05), with a
+small-to-medium effect size.
  
 Run it directly (this uses API credits, is not gated by `USE_MOCK_LLM`):
  
@@ -168,12 +190,25 @@ exact log line and database row.
 
 ## Observability
 
-`GET /stats` (also behind auth, but not rate-limited since it has no
-upstream cost) returns aggregate figures computed directly in Postgres via
-`FILTER`-scoped `COUNT`/`AVG`/`percentile_cont`: cache hit rate broken down
-by exact/semantic/miss, error rate, and p50/p95 latency over every request
-`/optimize` has logged due to the trace logging described
-above.
+`GET /stats` (also behind auth, but not rate-limited since it has no upstream cost) returns aggregate figures computed directly in Postgres via `FILTER`-scoped `COUNT`/`AVG`/`percentile_cont`: cache hit rate broken down by exact/semantic/miss, error rate, and p50/p95 latency over every request `/optimize` has logged due to the trace logging described above.
+
+### Live snapshot
+
+Pulled from the deployed instance after a mixed traffic run (fresh prompts, exact repeats, and near-duplicate paraphrases sent deliberately to exercise all three cache paths):
+
+| | |
+|---|---|
+| Total requests | 20 |
+| Exact-cache hits | 2 |
+| Semantic-cache hits | 2 |
+| Cache misses | 16 |
+| Errors | 4 |
+| p50 latency | 222ms |
+| p95 latency | 4313ms |
+
+The semantic hits above are verified, not just labeled: sending a paraphrase of an already-cached prompt (e.g. "explain what recursion is" after "explain recursion" had already been cached) returned the original cached
+`original_prompt` text in the response, confirming retrieval from the semantic cache. The 4 errors in this
+snapshot are due OpenAI API key misconfiguration, showing how this endpoint tracks errors.
 
 ## Testing
  
