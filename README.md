@@ -1,6 +1,6 @@
 # PromptOps
 
-A prompt-optimization API that started as a FastAPI tutorial exercise and grew into a small exploration of how LLM-backed services behave in production: caching, retries, circuit breakers, observability, and a stastical A/B testing framework for deciding whether a change to a system message is actually an improvement, or just noise.
+A prompt-optimization API that started as a FastAPI tutorial exercise and grew into a small exploration of how LLM-backed services behave in production: caching, retries, circuit breakers, observability, and a statistical A/B testing framework for deciding whether a change to a system message is actually an improvement, or just noise.
 
 ![CI](https://github.com/bonnie-mcconnell/promptops/actions/workflows/ci.yml/badge.svg)
 
@@ -44,7 +44,7 @@ FastAPI (/optimize)
         prompt, goal, cache_type, latency, status, error detail
 ```
 
-A seperate evaluation harness (`eval.py`) runs a fixed, hand built prompt set through two system message variants, scores each output with an LLM judge, and compares the two with a paired statistical test.
+A separate evaluation harness (`eval.py`) runs a fixed, hand built prompt set through two system message variants, scores each output with an LLM judge, and compares the two with a paired statistical test.
 
 **Stack:** FastAPI · Redis Stack (cache + vector search) · PostgreSQL (trace log) · Alembic (migrations) · Docker Compose · pytest · scipy
 
@@ -103,7 +103,7 @@ against a mock.
 ## Design Decisions
 
 **Three circuit breakers:** Chat completions, embeddings and LLM judging are
-three seperate OpenAI calls to different models that can each fail independently. A single shared
+three separate OpenAI calls to different models that can each fail independently. A single shared
 breaker would mean an embeddings outage incorrectly blocks chat completions
 too, or that a judge outage incorrectly blocks the main optimization path, even though the two aren't related failures. Each upstream dependency gets its own breaker.
 
@@ -146,7 +146,7 @@ For each prompt, both variants are run, an LLM judge scores each output
 1–10 against an anchored rubric (5 = no better than doing nothing), and the
 paired scores are compared with `scipy.stats.wilcoxon`.
 
-An initial 17-prompt pilot run produced a p-value closer to the significance threshold, and it's observed variance was used to run a power analysis (Cohen's dz for a paired tests, a=0.05, 80% power, targeting a half -point minimum meaningful effect), which indicated around 55 prompts were needed.
+An initial 17-prompt pilot run produced a p-value closer to the significance threshold, to avoid p-hacking the pilot's observed variance was used to run a power analysis (Cohen's dz for a paired test, α=0.05, 80% power, targeting a half-point minimum meaningful effect), which indicated around 55 prompts were needed. This was rounded up to 61 for margin and the sample size was fixed before the confirmatory run, so the result below wasn't cherry-picked.
 
 ### Results
 
@@ -208,7 +208,7 @@ Pulled from the deployed instance after a mixed traffic run (fresh prompts, exac
 
 The semantic hits above are verified, not just labeled: sending a paraphrase of an already-cached prompt (e.g. "explain what recursion is" after "explain recursion" had already been cached) returned the original cached
 `original_prompt` text in the response, confirming retrieval from the semantic cache. The 4 errors in this
-snapshot are due OpenAI API key misconfiguration, showing how this endpoint tracks errors.
+snapshot are due to an OpenAI API key misconfiguration hit and fixed during testing, showing how this endpoint tracks errors.
 
 ## Testing
  
